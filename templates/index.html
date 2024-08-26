@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explorador de Archivos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <style>
+        :root {
+            color-scheme: dark; /* Indica que el esquema de color principal es oscuro */
+        }
+          
+        :root {
+            --background-color: #121212;
+            --text-color: #e0e0e0;
+            --navbar-bg: #1e1e1e;
+            --card-bg: #1e1e1e;
+            --btn-primary-bg: #6200ea;
+            --btn-primary-hover-bg: #3700b3;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+          }
+          
+          .navbar, .footer, .card {
+            background-color: var(--navbar-bg);
+            color: var(--text-color);
+          }
+          
+          .btn-primary {
+            background-color: var(--btn-primary-bg);
+            border-color: var(--btn-primary-bg);
+          }
+          
+          .btn-primary:hover {
+            background-color: var(--btn-primary-hover-bg);
+            border-color: var(--btn-primary-hover-bg);
+          }
+
+          html, body {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            justify-content: flex-start;
+            flex-direction: column;
+            align-items: stretch;
+            align-content: center;
+            flex-wrap: wrap;
+          }
+      
+          .container {
+            width: 80%; /* Ajusta el ancho según sea necesario */
+            max-width: 1200px; /* Ajusta el máximo ancho según sea necesario */
+          }
+          .button-container {
+            display: flex;
+            gap: 10px; /* Espacio entre los botones */
+            height: 30px;
+          }
+      
+          .button-container .btn {
+            flex-grow: 1; /* Los botones se expandirán para ocupar el mismo espacio */
+            align-text: center;
+          }
+
+          ul {
+            list-style: none;
+            padding-left: 0;
+          }
+          li {
+            background: #333;
+          }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <h1>Explorador de Archivos</h1>
+</br>
+    <div class="button-container">
+        <button class="btn btn-success" onclick='showDialog("upload")'>Cargar archivo <i class="fa-solid fa-upload"></i></button>
+        <button class="btn btn-info" onclick='showDialog("mkDir")'>Crear carpeta <i class="fa-solid fa-folder-plus"></i></button>
+    </div>
+    <ul>
+    {% if curDir != '.' %}
+      <li class='card-body'>
+        <span class="name">Directorio superior</span>
+        <i class="fa-regular fa-folder"></i>
+        <a style='padding-left: 5px;' href="/?path={{ os.path.dirname(curDir) }}"><button class="btn btn-success"><i class="fa-solid fa-right-to-bracket"></i></button></a>
+      </li>
+    {% endif %}
+    {% for file in files %}
+        <li class="{{ file['type'] }} card-body">
+            <span class="name">{{ os.path.basename(file['path']) }}</span>
+            {% if file['type'] == 'directory' %}
+                <i class="fa-regular fa-folder"></i>
+                <a style='padding-left: 5px;' href="/?path={{ os.path.join(curDir, os.path.basename(file['path'])) }}"><button class="btn btn-success"><i class="fa-solid fa-right-to-bracket"></i></button></a>
+                <a style='padding-left: 5px;' href="/api/delete/directory?route={{ os.path.join(curDir, os.path.basename(file['path'])) }}"><button class="btn btn-danger"><i class="fa-solid fa-trash-can"></i></button></a>
+            {% elif file['type'] == 'file' %}
+                <i class="fa-solid fa-file"></i>
+                <a style='padding-left: 5px;' href="/api/download?route={{ curDir }}&filename={{ os.path.basename(file['path']) }}"><button class="btn btn-success"><i class="fa-solid fa-download"></i></button></a>
+                <a style='padding-left: 5px;' href="/api/delete/file?route={{ curDir }}&filename={{ os.path.basename(file['path']) }}"><button class="btn btn-danger"><i class="fa-solid fa-trash-can"></i></button></a>
+            {% else %}
+                <i class="fa-sharp-duotone fa-solid fa-circle-question"></i>
+            {% endif %}
+        </li>
+    {% endfor %}
+    </ul>
+    <dialog name='mkDir'>
+      <form method="post" action="/api/mkdir">
+          <input type='hidden' name='route' value='{{ curDir }}'>
+          <label for="name">Nombre de la carpeta:</label>
+          <input type="text" name="name" class="input-group mb-3">
+          <div class="button-container">
+              <button type="submit" class="btn btn-success">Crear</button>
+              <button type="button" class="btn btn-secondary" onclick="closeDialog('mkDir')">Cancelar</button>
+          </div>
+      </form>
+  </dialog>
+
+  <dialog name='upload'>
+    <form method="post" action="/api/upload", enctype='multipart/form-data'>
+        <input type='hidden' name='route' value='{{ curDir }}'>
+        <label for="name">Archivo:</label>
+        <input type="file" name="file" class="input-group mb-3">
+        <div class="button-container">
+            <button type="submit" class="btn btn-success">Cargar</button>
+            <button type="button" class="btn btn-secondary" onclick="closeDialog('upload')">Cancelar</button>
+        </div>
+    </form>
+  </dialog>
+  
+  <script>
+      function showDialog(name) {
+          document.querySelector(`dialog[name="${name}"]`).showModal();
+      }
+
+      function closeDialog(name) {
+        document.querySelector(`dialog[name="${name}"]`).close();
+      }
+
+      document.querySelector('dialog[name="mkDir"]>form').addEventListener('submit', function(event) {
+        event.preventDefault();  // Evita la recarga o redirección de la página
+
+        // Recoge los datos del formulario
+        const formData = new FormData(this);
+
+        // Envía la petición usando fetch
+        fetch('/api/mkdir', {
+            method: 'POST',
+            body: formData,
+        })
+        .then(response => response.json())  // Asume que el servidor responde en formato JSON
+        .then(data => {
+            console.log('Respuesta:', data);
+            // Aquí puedes agregar código para manejar la respuesta, como cerrar el diálogo o actualizar la UI
+            closeDialog('mkDir');
+            // Podrías agregar lógica para refrescar la lista de directorios si es necesario
+            globalThis.location.href = globalThis.location.href;
+            
+        })
+        .catch(error => {
+            console.error('Error:', error);
+
+            closeDialog('mkDir');
+            // Podrías agregar lógica para refrescar la lista de directorios si es necesario
+            globalThis.location.href = globalThis.location.href;
+        });
+    });
+
+    document.querySelector('dialog[name="upload"]>form').addEventListener('submit', function(event) {
+      event.preventDefault();  // Evita la recarga o redirección de la página
+
+      // Recoge los datos del formulario
+      const formData = new FormData(this);
+
+      // Envía la petición usando fetch
+      fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+      })
+      .then(response => response.json())  // Asume que el servidor responde en formato JSON
+      .then(data => {
+          console.log('Respuesta:', data);
+          // Aquí puedes agregar código para manejar la respuesta, como cerrar el diálogo o actualizar la UI
+          closeDialog('upload');
+          // Podrías agregar lógica para refrescar la lista de directorios si es necesario
+          globalThis.location.href = globalThis.location.href;
+          
+      })
+      .catch(error => {
+          console.error('Error:', error);
+
+          closeDialog('upload');
+          // Podrías agregar lógica para refrescar la lista de directorios si es necesario
+          globalThis.location.href = globalThis.location.href;
+      });
+  });
+
+  document.querySelectorAll('ul > li.file > a')[1].addEventListener('click', function(event) {
+    event.preventDefault();  // Evita el comportamiento predeterminado del enlace
+
+    const url = this.getAttribute('href');  // Obtiene la URL del atributo data-url
+
+    fetch(url, {
+        method: 'DELETE'
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Error en la red');
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Éxito:', data);
+
+        globalThis.location.href = globalThis.location.href;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Hubo un problema al eliminar el elemento');
+        globalThis.location.href = globalThis.location.href;
+    });
+});
+
+document.querySelectorAll('ul > li.directory > a')[1].addEventListener('click', function(event) {
+  event.preventDefault();  // Evita el comportamiento predeterminado del enlace
+
+  const url = this.getAttribute('href');  // Obtiene la URL del atributo data-url
+
+  fetch(url, {
+      method: 'DELETE'
+  })
+  .then(response => {
+      if (!response.ok) {
+          throw new Error('Error en la red');
+      }
+      return response.json();
+  })
+  .then(data => {
+      console.log('Éxito:', data);
+
+      globalThis.location.href = globalThis.location.href;
+  })
+  .catch(error => {
+      console.error('Error:', error);
+      alert('Hubo un problema al eliminar el elemento');
+      globalThis.location.href = globalThis.location.href;
+  });
+});
+  </script>
+</body>
+</html>
