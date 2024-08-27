@@ -37,15 +37,15 @@ def APIproxy(path):
 @app.route('/')
 def home():
     route = request.args.get('path', '.')
-    fileList = requests.get(f'http://localhost:{APIPORT}/list?route={route}').json().get('items')
+    fileList = requests.get(f'http://{APIHOST}:{APIPORT}/list?route={route}').json().get('items')
     newFileList = []
     for file in fileList:
         
         print(file)
         if file.get('type') == 'file':
-            newFileList.append(requests.get(f'http://localhost:{APIPORT}/file/details?route={route}&filename={file.get("name")}').json())
+            newFileList.append(requests.get(f'http://{APIHOST}:{APIPORT}/file/details?route={route}&filename={file.get("name")}').json())
         elif file.get('type') == 'directory':
-            newFileList.append(requests.get(f'http://localhost:{APIPORT}/directory/details?route={os.path.join(route, file.get("name"))}').json())
+            newFileList.append(requests.get(f'http://{APIHOST}:{APIPORT}/directory/details?route={os.path.join(route, file.get("name"))}').json())
         else:
             newFileList.append(file)
             
