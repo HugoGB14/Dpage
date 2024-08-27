@@ -1,11 +1,11 @@
-import socket
 from flask import Flask, Response, render_template, request
 import requests
 import os
 
 app = Flask(__name__)
 APIPORT = 55
-TARGET_SERVER_URL = f'http://localhost:{APIPORT}'
+APIHOST = os.getenv('API_HOST', 'localhost')
+TARGET_SERVER_URL = f'http://{APIHOST}:{APIPORT}'
 
 @app.route('/api/<path:path>', methods=['GET', 'POST', 'DELETE'])
 def APIproxy(path):
